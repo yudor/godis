@@ -5,12 +5,12 @@ import "fmt"
 func (g *godis) Keys() ([]string, error) {
 	if _, err := g.writeBytes(fmt.Sprintf("KEYS %v", "*")); err == nil {
 		resp, _ := g.readBytes(64)
-		_, parseErr := g.p.Parse(resp)
+		keys, parseErr := g.p.Parse(resp)
 		if parseErr == nil {
-			return []string{}, nil
+			return keys.([]string), nil
 		}
 	}
-	return []string{}, ConnectionError
+	return nil, ConnectionError
 }
 
 func (g *godis) Flush() (interface{}, error) {
