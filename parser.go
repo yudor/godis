@@ -16,8 +16,9 @@ const (
 )
 
 type parser struct{}
+type ArrString []string
 
-func (p parser) Parse(payload []byte) (interface{}, error) {
+func (p *parser) Parse(payload []byte) (interface{}, error) {
 	fmt.Printf("{buffer: %v},\n{payload: %v}\n\n", payload, string(payload))
 	lines := p.parseLines(payload)
 
@@ -34,29 +35,30 @@ func (p parser) Parse(payload []byte) (interface{}, error) {
 		}
 	}
 
-	for _, line := range lines {
-		i := line[0]
+	if lines[0][0] == ArrayReply {
+		return p.parseArray(payload)
+	}
 
-		switch i {
-		case ErrorReply:
-			break
-		case ArrayReply:
-			break
-		case SimpleStringReply:
-			return p.parseString(line[1:])
-		case IntReply:
-			return p.parseInt(line[1:])
-		}
+	if lines[0][0] == SimpleStringReply {
+		return p.parseString(lines[0][1:])
+	}
+
+	if lines[0][0] == IntReply {
+		return p.parseInt(lines[0][1:])
+	}
+
+	if lines[0][0] == ErrorReply {
+		return nil, nil
 	}
 
 	return nil, nil
 }
 
-func (p parser) parseLines(payload []byte) [][]byte {
+func (p *parser) parseLines(payload []byte) [][]byte {
 	return bytes.Split(payload, []byte("\r\n"))
 }
 
-func (p parser) parseString(payload []byte) (string, error) {
+func (p *parser) parseString(payload []byte) (string, error) {
 	return string(payload), nil
 }
 
@@ -64,12 +66,29 @@ func (p *parser) parseInt(payload []byte) (int, error) {
 	return strconv.Atoi(string(payload))
 }
 
-func (p parser) parseBulkString(payload []byte) (interface{}, error) {
+func (p *parser) parseBulkString(payload []byte) (interface{}, error) {
 	matched, _ := regexp.MatchString("^[0-9]+$", string(payload))
 	if matched {
 		return strconv.Atoi(string(payload))
 	}
 	return string(payload), nil
+}
+
+func (p *parser) parseArray(payload []byte) ([]string, error) {
+	fmt.Printf("{buffer: %v},\n{payload: %v}\n\n", payload, string(payload))
+	lines := p.parseLines(payload)
+	arraySize, _ := p.parseInt(lines[0][1:])
+	var array []string
+
+	if arraySize == 0 {
+		return []string{}, nil
+	}
+
+	for i := 1; i < len(lines)-1; i += 2 {
+		array = append(array, string(lines[i+1]))
+	}
+
+	return array, nil
 }
 
 func isNilReply(payload []byte) bool {
