@@ -61,5 +61,7 @@ func (g *godis) getMemoryBytes(key string) (int, error) {
 		return 0, nil
 	}
 
-	return strconv.Atoi(formattedResp[1:])
+	size, convertErr := strconv.Atoi(formattedResp[1:])
+
+	return size / 2, convertErr
 }
